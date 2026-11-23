@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Эволюция 6.0 — древо видов, окно вымирания</title>
+<style>
+ body{margin:0;background:#0a0f0c;color:#cfe8d8;font-family:'Segoe UI',Arial,sans-serif;display:flex;align-items:flex-start;justify-content:center;padding:10px;gap:10px}
+ #wrap{border:2px solid #2c4a3a;border-radius:8px;box-shadow:0 0 24px rgba(0,0,0,.55);overflow:hidden;line-height:0}
+ canvas#world{display:block}
+ #panel{width:310px;padding:12px;font-size:13px;line-height:1.45;box-sizing:border-box}
+ h1{font-size:15px;margin:0 0 8px;color:#9fe}
+ .lbl{color:#8aa892;font-size:11px}
+ .bar{height:7px;border-radius:4px;background:#1c2b22;margin:1px 0 5px;overflow:hidden}
+ .bar>div{height:100%;border-radius:4px}
+ label{display:block;margin:5px 0}
+ input[type=range]{width:100%}
+ input[type=number],input[type=text]{width:64px;background:#0d1512;color:#cfe8d8;border:1px solid #2c4a3a;border-radius:4px;padding:2px 4px}
+ input[type=text]{width:120px}
+ button{margin:2px 2px 2px 0;padding:5px 10px;background:#2a6f5e;color:#fff;border:0;border-radius:6px;cursor:pointer}
+ button:hover{background:#35876f}
+ #chart{border:1px solid #2c4a3a;border-radius:6px;margin-top:8px}
+ .hint{color:#7a9585;font-size:11px;margin-top:8px}
+ .spName{font-size:12px}
+ .spTitle{cursor:pointer}
+ .spTitle:hover{text-decoration:underline dotted}
+ .hlBox{margin-right:2px}
+ #startModal,#specModal,#helpModal,#statsModal,#treeModal{position:fixed;inset:0;background:rgba(4,8,6,.85);display:none;align-items:center;justify-content:center;z-index:10}
+ .box{background:#101a14;border:2px solid #2c4a3a;border-radius:10px;padding:16px 18px;width:380px;font-size:13px;line-height:1.5;box-shadow:0 0 30px rgba(0,0,0,.7);max-height:92vh;overflow:auto;box-sizing:border-box}
+ .box h2{margin:0 0 10px;color:#9fe;font-size:16px}
+ .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}
+ .row label{margin:0;display:flex;align-items:center;gap:6px}
+ .box button{margin-top:10px;padding:8px;font-size:14px}
+ .cmpTrack{position:relative;height:12px;background:#1c2b22;border-radius:6px;margin:6px 0 2px}
+ .cmpDot{position:absolute;border-radius:50%}
+ /* карусель стартовых видов: карточки строит код из START_SPECIES */
+ .carousel{display:flex;align-items:center;gap:4px;margin:8px 0}
+ .cView{overflow:hidden;flex:1;border:1px solid #2c4a3a;border-radius:8px}
+ .cTrack{display:flex;transition:transform .25s}
+ .spCard{flex:0 0 100%;width:100%;box-sizing:border-box;padding:10px 8px}
+ .cArrow{padding:6px 9px;background:#2a6f5e;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:18px;line-height:1}
+ .cArrow:hover{background:#35876f}
+ .rollBtn{padding:3px 7px;font-size:15px;line-height:1}
+ .cIdx{color:#7a9585;font-size:11px;text-align:center;margin:2px 0 6px}
+ .hRow{display:flex;gap:6px;align-items:center}
+ .hRow input[type=checkbox]{flex:0 0 auto}
+ .nameInput{flex:1;min-width:0}
+ .hRow input[type=number]{width:56px}
+ .hRow input[type=text]{flex:1;min-width:0;width:auto}
+ .portRow{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:2px 0 4px}
+ .boxTitle{display:flex;align-items:center;justify-content:space-between;gap:8px}
+ .helpBtn{width:26px;height:26px;border-radius:50%;background:#2a6f5e;color:#fff;border:0;font-size:15px;font-weight:bold;cursor:pointer;padding:0;line-height:1;flex:0 0 auto}
+ .helpBtn:hover{background:#35876f}
+ #helpBox{width:420px}
+ #helpBox h3{margin:10px 0 4px;color:#8fd6b0;font-size:13px}
+ #helpBox p{margin:4px 0}
+ /* окно статистики */
+ #statsBox{width:460px}
+ #statsBox h3{margin:10px 0 4px;color:#8fd6b0;font-size:13px}
+ .statChip{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
+ /* окно древа: прокручиваемая область с ветками-линиями */
+ #treeBox{width:940px}
+ #treeScroll{overflow:auto;max-height:74vh;border:1px solid #2c4a3a;border-radius:8px;background:#0d1512;padding:6px}
+ body.mobile{flex-direction:column;align-items:center;padding:6px}
+ body.mobile #panel{width:100%;max-width:1000px}
+ body.mobile .box{width:min(92vw,380px)}
+ body.mobile input[type=number],body.mobile input[type=text]{font-size:16px;padding:5px 7px}
+ body.mobile input[type=range]{height:28px}
+ body.mobile button{padding:9px 14px;font-size:15px}
+ body.mobile .cArrow{padding:10px 14px;font-size:22px}
+ body.mobile #helpBox{width:min(92vw,420px)}
+ body.mobile #statsBox{width:min(92vw,460px)}
+ body.mobile #treeBox{width:min(96vw,940px)}
+ @media(max-width:820px){
+  body{flex-direction:column;align-items:center;padding:6px}
+  #panel{width:100%;max-width:1000px}
+  .box{width:min(92vw,380px)}
+  #helpBox{width:min(92vw,420px)}
+  #statsBox{width:min(92vw,460px)}
+  #treeBox{width:min(96vw,940px)}
+  input[type=number],input[type=text]{font-size:16px;padding:5px 7px}
+  input[type=range]{height:28px}
+  button{padding:9px 14px;font-size:15px}
+  .cArrow{padding:10px 14px;font-size:22px}
+ }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="world" width="1000" height="690"></canvas></div>
+<div id="panel">
+ <h1>Эволюция 6.0</h1>
+ <div>
+      <label>Скорость симуляции: <b id="simSpeedVal">1x</b> (0.25x — 6x) <input type="range" id="simSpeed" min="0.25" max="6" step="0.25" value="1"></label>
+      <button id="btnPause">Пауза</button>
+      <button id="btnStats">Статистика</button>
+      <button id="btnTree" title="генеалогическое древо видов">🌳 Древо</button>
+      <button id="btnRestart">Перезапуск</button>
+      <button id="btnJson" title="выгрузить статистику по всем видам">⬇ JSON</button>
+</div>
+ <canvas id="chart" width="282" height="90"></canvas>
+ <div class="stats" id="stats"></div>
+ <div class="hint">
+  Значки: 👥 численность · ♂♀ полы · 🌱 поколение · 📅 тик рождения · 👁 подсветить вид пунктиром своего цвета на карте. Вид — это номер: особь может жить и в травоядных, и в хищниках (миграция по рациону), имя и цвет у вида при этом одни.
+ </div>
+</div>
+
+<div id="startModal">
+ <div class="box">
+  <div class="boxTitle"><h2>Запуск мира</h2><button class="helpBtn" id="btnHelp" title="справка по игре">?</button></div>
+  <div class="carousel">
+   <button class="cArrow" id="carPrev">‹</button>
+   <div class="cView"><div class="cTrack" id="carTrack"></div></div>
+   <button class="cArrow" id="carNext">›</button>
+  </div>
+  <div class="cIdx" id="carIdx"></div>
+  <label>Обилие еды <input type="range" id="foodRate" min="0" max="3" step="0.1" value="1.2"></label>
+  <label>Сила мутаций <input type="range" id="mutRate" min="0" max="0.15" step="0.005" value="0.05"></label>
+  <label>Калорийность еды <input type="range" id="foodCal" min="10" max="50" value="22"></label>
+  <label>Успешность атак хищников <input type="range" id="huntCh" min="0.2" max="1" step="0.05" value="0.7"></label>
+  <button id="btnStart" style="width:100%">▶ Начать симуляцию</button>
+ </div>
+</div>
+
+<div id="specModal">
+ <div class="box" id="specBox"></div>
+</div>
+
+<div id="statsModal">
+ <div class="box" id="statsBox"></div>
+</div>
+
+<div id="treeModal">
+ <div class="box" id="treeBox"></div>
+</div>
+
+<div id="helpModal">
+ <div class="box" id="helpBox">
+  <div class="boxTitle"><h2>Как устроен мир</h2><button class="helpBtn" id="btnHelpClose">×</button></div>
+  <h3>Запуск</h3>
+  <p>Стартовые виды описаны списком START_SPECIES в коде: облик (shape) и рамки генов. Лагерь (травоядное/хищник) НЕ задаётся заранее — он определяется геном рациона каждой особи. Карточки строятся автоматически, сколько бы видов ни было в списке. Кнопка «⟳» перебрасывает характеристики вида в рамках его диапазона. Имена видов никогда не повторяются.</p>
+  <h3>Травоядные и Хищники</h3>
+  <p>Рацион: до 0.5 — Травоядные, 0.5 и выше — Хищники. 0.35–0.65 — условно всеядные (охотятся на сородичей мельче себя). Особь мигрирует между лагерями, когда её рацион пересекает порог 0.5.</p>
+  <h3>Гены и внешние признаки</h3>
+  <p>Цвет тела — рацион (зелёный → красный). Маскировка — прозрачность и дальность обнаружения. Стайность — бонус к атаке от союзников. Норы — рытьё, разрывание чужих нор и дешёвый отдых в норе. Любовь — дальность поиска: розовое кольцо видно ТОЛЬКО когда особь ищет пару, и растёт вместе с геном любви. Хищник не видит жертву заметно крупнее себя.</p>
+  <h3>Стая и делёж</h3>
+  <p>Стайные особи следуют за вожаком. Когда кто-то добывает еду (жертву), 80% ценности делится между стайными особями рядом пропорционально их стайности, 20% — добытчику. Если рядом никого — вся добыча его.</p>
+  <h3>Норы</h3>
+  <p>Норы копают особи с геном нор от 0.25. Хищники с высоким геном нор разрывают норы и ловят спрятавшихся.</p>
+  <h3>Расколы видов и подсветка</h3>
+  <p>Каждые 60 тиков мир проверяет свои виды: группа особей с сильно отошедшими генами отделяется в новый вид. Кольца видов не рисуются автоматически: галочка «👁» у вида включает пунктирную подсветку его цветом на карте.</p>
+  <h3>Миграция</h3>
+  <p>Если рацион особи пересекает порог 0.5, она переселяется в другой лагерь, сохраняя номер, имя и цвет вида. Вид может жить в двух лагерях сразу — это один вид, а не два. Счётчики миграций — в окне «Статистика».</p>
+  <h3>Древо видов</h3>
+  <p>Кнопка «🌳 Древо» открывает генеалогическую линию мира: каждая ветка — вид во времени, от точки ответвления до конца жизни. У начала ветки — портрет вида по средним генам на момент появления, у конца — портрет последнего представителя (у живых — текущий). Вымирание отмечено красным «✕».</p>
+  <h3>Вымирание</h3>
+  <p>Когда умирает последняя особь вида, мир останавливается и показывает «прощальное» окно: портрет последнего представителя, его характеристики и полную статистику вида — рождения, смерти по видам-убийцам, миграции.</p>
+  </div>
+</div>
+<script>
+const world=document.getElementById('world'),ctx=world.getContext('2d');
+const chart=document.getElementById('chart'),chc=chart.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=1000,H=690;
+let prey=[],preds=[],foods=[],tick=0,paused=true,started=false;
+let maxAge=0,maxAgePred=0,maxGen=1,maxGenPred=1,eaten=0,dead=0,deadPred=0,killedKin=0,foodAcc=0,hist=[];
+let stepAcc=0;
+let specInfoP='—',specInfoR='—';
+let nextSpec=0,uid=1; // uid — тай-брейк вожака при равном возрасте
+const specBorn={};
+const specNames={};
+let readyBySpecP={},readyBySpecR={};
+let specEvents=[];  // очередь расколоов видов
+let extEvents=[];   // очередь вымираний видов — те же «праздничные» окна
+const highlighted=new Set();
+// --- генеалогия: по каждому виду храним точку рождения, родителя,
+// средние гены на появление и гены последнего представителя ---
+const specTree={}; // sid → {parent, bornTick, shape, g0, gEnd, diedTick}
+const extLog=[];   // журнал вымираний — в JSON
+// --- статистика: ОДНА запись на вид (ключ 's'+spec), без дублирования по лагерям ---
+const specStats={}; // 's0','s1'... → {name, bornTick, diedTick, initCount, births, deaths:{starve,eatenBy:{},kinKillBy:{}}, mig:{toPred,toPrey}, history:[], genesHistory:[], maxPop, lastCount}
+const worldSettings={}; // снимок настроек запуска (для JSON)
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const gauss=()=>(Math.random()+Math.random()+Math.random()-1.5)*1.4;
+const cl=v=>Math.max(0.02,Math.min(1,v));
+const d2=(a,b)=>{const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;};
+function walls(o){if(o.x<0){o.x=0;o.a=Math.PI-o.a;}if(o.x>W){o.x=W;o.a=Math.PI-o.a;}
+ if(o.y<0){o.y=0;o.a=-o.a;}if(o.y>H){o.y=H;o.a=-o.a;}}
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+const NAME_A=['Зеле','Мор','Крис','Барх','Сум','Тайг','Луг','Мши','Кор','Дик','Пеп','Сол','Вель','Тор','Гно','Се','Ян'];
+const NAME_B=['озавры','уны','ипы','орусы','алии','овцы','олики','анты','ины','омеды','иды','аты','усы','эли','ари'];
+// генератор имён: ни одно имя не выдаётся дважды; при исчерпании комбинаций — номер-суффикс
+const usedNames=new Set();
+function randName(){
+ for(let t=0;t<80;t++){
+  const n=NAME_A[Math.floor(Math.random()*NAME_A.length)]+NAME_B[Math.floor(Math.random()*NAME_B.length)];
+  if(!usedNames.has(n)){usedNames.add(n);return n;}
+ }
+ let i=2;while(usedNames.has('Вид '+i))i++;
+ usedNames.add('Вид '+i);return 'Вид '+i;
+}
+function uniqueName(base){
+ let n=(base||'').trim()||randName();
+ if(!usedNames.has(n)){usedNames.add(n);return n;}
+ let i=2;
+ while(usedNames.has(n+' '+i))i++;
+ const out=n+' '+i;usedNames.add(out);return out;
+}
+
+// ============================================================
+// СТАРТОВЫЕ ВИДЫ — ЕДИНЫЙ СПИСОК. Новый вид = добавить запись.
+// shape: 'poly' | 'star' — облик (косметика). Лагерь задаёт ТОЛЬКО рацион:
+// особи с hunt>=0.5 рождаются/живут хищниками, ниже — травоядными.
+// ============================================================
+const START_SPECIES=[
+ {shape:'poly', label:'травоядный',
+  ranges:{speed:[.3,.7],size:[.3,.8],vision:[.4,.8],camo:[.15,.30],pack:[.15,.25],dig:[0,.3],love:[.1,.4],hunt:[.01,.3]}},
+ {shape:'star', label:'травоядный 2',
+  ranges:{speed:[.35,.75],size:[.35,.7],vision:[.45,.85],camo:[.08,.25],pack:[.05,.3],dig:[.1,.4],love:[.2,.6],hunt:[.35,.65]}},
+ {shape:'tri',  label:'хищник',
+  ranges:{speed:[.45,.9],size:[.2,.7],vision:[.5,.9],camo:[.1,.18],pack:[.15,.55],dig:[0,.2],love:[.1,.5],hunt:[.5,.99]}}
+];
+const START_RANGE_WIDTH=[0.15,0.5];
+function rollRanges(r){
+ const out={};
+ for(const k in r){
+  const[a,b]=r[k];
+  const w=rnd(START_RANGE_WIDTH[0],START_RANGE_WIDTH[1])*(b-a);
+  const lo=a+Math.random()*(b-a-w);
+  out[k]=[lo,lo+w];
+ }
+ return out;
+}
+for(const sp of START_SPECIES)sp.rolled=rollRanges(sp.ranges);
+function defaultGenes(shape){
+ const sp=START_SPECIES.find(s=>s.shape===shape)||START_SPECIES[0];
+ return genFrom(sp.rolled);
+}
+
+function genFrom(rng){const g={};for(const k in rng)g[k]=rnd(rng[k][0],rng[k][1]);return g;}
+
+// ============================================================
+// БАЛАНС МИРА — ВСЕ РУЧКИ ЗДЕСЬ, КОММЕНТАРИИ У КАЖДОЙ.
+// ============================================================
+const GENES_ALL=['speed','size','vision','camo','pack','dig','love','hunt'];
+const COMPAT=0.28;
+const DIET_MATE=0.35;
+const SPEC_LINK=0.24;
+const SPEC_SPLIT=0.35;
+const SPEC_MIN=10;
+const SPEC_SINGLE=0.44;
+const DIET_MIGRATE=0.5;
+
+// --- норы ---
+const DIG_THRESHOLD=0.25;
+const BURROW_LIFE=3000;
+const MAX_BURROWS=30;
+const DIG_RATE=0.02;
+const DIG_COST_BASE=30;
+const DIG_COST_REDUCTION=16;
+const NEW_BURROW_MULT=1.6;
+const BURROW_MIN_DIST=90;
+const BURROW_ENERGY_MAX=0.75;
+const BURROW_ENERGY_MIN=0.2;
+const BURROW_MIN_STAY=120;
+
+// --- охота и размер ---
+const SIZE_ATTACK_MARGIN=0.08;
+const KIN_HUNT_MIN=0.4;
+
+// --- любовь ---
+const LOVE_COST=0.004;
+const LOVE_RANGE_MIN=30;
+const LOVE_RANGE_SPAN=220;
+const LOVE_RING_MAX=10;
+const MATE_RANGE_PRED_MULT=2;
+
+// --- стая ---
+const PACK_FOLLOW_MIN=50;
+const PACK_LEAD_R=200;
+const PACK_SHARE_R=110;
+const PACK_SHARE_FRAC=0.8;
+const PACK_SHARE_MIN=0.05;
+
+// --- мобильная версия ---
+const MOBILE_MAX=820;
+
+// --- цвета столбиков панели (от рациона НЕ зависят) ---
+const COL_SPEED='#5fcf80', COL_SIZE='#5f5f80', COL_VISION='#9fe0c0',
+      COL_CAMO='#e8a15c', COL_PACK='#c9a0ff', COL_DIG='#7fd8d8';
+const BASECOL={speed:COL_SPEED,size:COL_SIZE,vision:COL_VISION,camo:COL_CAMO,pack:COL_PACK,dig:COL_DIG};
+const RU_NAMES={speed:'скорость',size:'размер',vision:'зрение',camo:'маскировка',hunt:'рацион',pack:'стайность',dig:'норы',love:'любовь'};
+
+function digMaxSlots(d){
+ if(d<DIG_THRESHOLD)return 0;
+ return Math.min(10,Math.round(1+9*(d-DIG_THRESHOLD)/(0.95-DIG_THRESHOLD)));
+}
+function burrowEnergyMult(d){
+ return BURROW_ENERGY_MAX-(BURROW_ENERGY_MAX-BURROW_ENERGY_MIN)*cl(d);
+}
+function mateRange(l,predMult){
+ return (LOVE_RANGE_MIN+cl(l)*LOVE_RANGE_SPAN)*(predMult?MATE_RANGE_PRED_MULT:1);
+}
+function packShare(hunter,arr,x,y,total,cap){
+ const mates=[];
+ for(const o of arr){
+  if(o===hunter||o.g.pack<=PACK_SHARE_MIN)continue;
+  const dx=o.x-x,dy=o.y-y;
+  if(dx*dx+dy*dy<PACK_SHARE_R*PACK_SHARE_R)mates.push(o);
+ }
+ if(!mates.length)return total;
+ const share=total*PACK_SHARE_FRAC;
+ let s=0;for(const o of mates)s+=o.g.pack;
+ if(s<=0)return total;
+ for(const o of mates)o.energy=Math.min(cap,o.energy+share*(o.g.pack/s));
+ return total-share;
+}
+function mateFit(a,q){
+ return geneDist(a.g,q.g,GENES_ALL)<=COMPAT&&Math.abs(a.g.hunt-q.g.hunt)<=DIET_MATE&&maxGeneDiff(a.g,q.g,GENES_ALL)<=SPEC_SINGLE;
+}
+function partnerOK(a,q,minE,predToo){
+ return q!==a&&q.sex!==a.sex&&q.energy>=minE&&(predToo?q.cool===0:q.burrow==null)&&mateFit(a,q);
+}
+function nearestFood(x,y){
+ let f=null,fd=1e18;
+ for(const q of foods){const dx=q.x-x,dy=q.y-y,d=dx*dx+dy*dy;if(d<fd){fd=d;f=q;}}
+ return{f,fd};
+}
+function avgGenes(m){
+ const g={};for(const k of GENES_ALL)g[k]=0;
+ for(const o of m)for(const k of GENES_ALL)g[k]+=o.g[k];
+ for(const k of GENES_ALL)g[k]/=m.length;
+ return g;
+}
+
+function geneDist(a,b,keys){let s=0;for(const k of keys)s+=Math.abs(a[k]-b[k]);return s/keys.length;}
+function maxGeneDiff(a,b,keys){let m=0;for(const k of keys){const d=Math.abs(a[k]-b[k]);if(d>m)m=d;}return m;}
+function sexOf(gr){const m=gr.filter(o=>o.sex==='m').length;return[m,gr.length-m];}
+function sexRatioOK(m,f){const t=m+f;if(!t)return false;const p=m/t;return p>=0.4&&p<=0.6;}
+function cluster(arr,metric,thresh){
+ const n=arr.length,par=new Array(n);
+ for(let i=0;i<n;i++)par[i]=i;
+ const find=i=>par[i]===i?i:(par[i]=find(par[i]));
+ for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)
+  if(metric(arr[i],arr[j])<thresh){const A=find(i),B=find(j);if(A!==B)par[A]=B;}
+ const groups={};
+ for(let i=0;i<n;i++){const r=find(i);(groups[r]=groups[r]||[]).push(arr[i]);}
+ return Object.values(groups);
+}
+function nameOf(sid){return specNames[sid]||('вид №'+sid);}
+function statKey(o){return 's'+(o.spec||0);}
+function statRec(key){
+ if(!specStats[key])specStats[key]={name:nameOf(+key.slice(1)),bornTick:tick,diedTick:null,initCount:0,
+  births:0,deaths:{starve:0,eatenBy:{},kinKillBy:{}},mig:{toPred:0,toPrey:0},history:[],genesHistory:[],maxPop:0,lastCount:0};
+ return specStats[key];
+}
+function deathStat(o,cause,killerKey){
+ const rec=statRec(statKey(o));
+ if(cause==='starve')rec.deaths.starve++;
+ else if(killerKey){
+  const m=cause==='eaten'?rec.deaths.eatenBy:rec.deaths.kinKillBy;
+  m[killerKey]=(m[killerKey]||0)+1;
+ }
+}
+// ============================================================
+// РАСКОЛЫ ВИДОВ — каждые 60 тиков мир ищет оторвавшиеся группы
+// ============================================================
+function classifyArr(arr,keys,predFlag){
+ const groups={};
+ for(const o of arr)(groups[o.spec||0]=groups[o.spec||0]||[]).push(o);
+ const readyBySpec={};
+ let infoBest=null;
+ for(const sidKey of Object.keys(groups)){
+  const sid=+sidKey,gr=groups[sid];
+  const rb={};for(const k of keys)rb[k]=null;
+  readyBySpec[sid]=rb;
+  if(gr.length<2)continue;
+  const gdist=(a,b)=>geneDist(a.g,b.g,keys);
+  const mids={};
+  for(const k of keys){const vs=gr.map(o=>o.g[k]).sort((x,y)=>x-y);mids[k]=vs[Math.floor(vs.length/2)];}
+  const poolMean={};for(const k of keys)poolMean[k]=mean(gr,o=>o.g[k]);
+  const meansOf=c=>{const r={};for(const k of keys)r[k]=mean(c,o=>o.g[k]);return r;};
+  const taken=new Set();
+
+  for(const k of keys){
+   const det=gr.filter(o=>Math.abs(o.g[k]-mids[k])>SPEC_SINGLE);
+   if(det.length<SPEC_MIN)continue;
+   let bg=null;
+   for(const c of cluster(det,gdist,SPEC_LINK)){
+    if(c.some(o=>taken.has(o)))continue;
+    const[m,f]=sexOf(c);
+    if(!bg||c.length>bg.gr.length)bg={gr:c,m,f};
+   }
+   if(bg&&bg.gr.length>=SPEC_MIN)rb[k]={n:bg.gr.length,m:bg.m,f:bg.f};
+  }
+
+  const base=cluster(gr,gdist,SPEC_LINK);
+  let mainF=null;
+  for(const c of base)if(!mainF||c.length>mainF.length)mainF=c;
+  for(const c of base){
+   if(c===mainF)continue;
+   if(c.some(o=>taken.has(o)))continue;
+   let genGap=1e9,singGap=0,singName='';
+   for(const o of c){
+    for(const m of mainF){const g1=gdist(o,m);if(g1<genGap)genGap=g1;}
+    for(const k of keys){const d=Math.abs(o.g[k]-mids[k]);if(d>singGap){singGap=d;singName=k;}}
+   }
+   const[m,f]=sexOf(c);
+   if((genGap>SPEC_SPLIT||singGap>SPEC_SINGLE)&&c.length>=SPEC_MIN&&sexRatioOK(m,f)){
+    const id=nextSpec++;specBorn[id]=tick;
+    specNames[id]=randName();
+    const newMeans=meansOf(c);
+    // запись в древо: начало ветки = средние гены группы на момент раскола
+    specTree[id]={parent:sid,bornTick:tick,g0:{...newMeans},shape:c[0].shape,gEnd:null,diedTick:null};
+    statRec('s'+id).initCount=c.length; // основатели — не «рождения», но это особи вида
+    specEvents.push({id,predFlag,parentSid:sid,geneName:singName||keys[0],
+     oldMean:poolMean[singName]||0,newMean:newMeans[singName]||0,
+     means:newMeans,members:c,m,f,bornTick:tick,count:c.length});
+    for(const o of c){o.spec=id;taken.add(o);}
+   }else{
+    const pC=Math.min(1,c.length/SPEC_MIN),
+          gP=Math.min(1,genGap/SPEC_SPLIT),
+          sP=Math.min(1,singGap/SPEC_SINGLE);
+    const score=Math.min(pC,Math.max(gP,sP));
+    if(!infoBest||score>infoBest.score)infoBest={score,count:c.length,genGap,singGap,singName,parent:sid};
+   }
+  }
+  for(const k of keys){
+   const r=rb[k];
+   if(!r||r.n<SPEC_MIN||!sexRatioOK(r.m,r.f))continue;
+   const det=gr.filter(o=>Math.abs(o.g[k]-mids[k])>SPEC_SINGLE);
+   for(const c of cluster(det,gdist,SPEC_LINK)){
+    if(c.length<SPEC_MIN)continue;
+    if(c.some(o=>taken.has(o)))continue;
+    const[m,f]=sexOf(c);
+    if(!sexRatioOK(m,f))continue;
+    const id=nextSpec++;specBorn[id]=tick;
+    specNames[id]=randName();
+    const newMeans=meansOf(c);
+    specTree[id]={parent:sid,bornTick:tick,g0:{...newMeans},shape:c[0].shape,gEnd:null,diedTick:null};
+    statRec('s'+id).initCount=c.length;
+    specEvents.push({id,predFlag,parentSid:sid,geneName:k,
+     oldMean:poolMean[k],newMean:newMeans[k],means:newMeans,members:c,m,f,bornTick:tick,count:c.length});
+    for(const o of c){o.spec=id;taken.add(o);}
+   }
+  }
+ }
+ return{readyBySpec,infoBest};
+}
+function speciesCountAll(){
+ const s=new Set();
+ for(const o of prey)s.add(o.spec||0);
+ for(const o of preds)s.add(o.spec||0);
+ return s.size;
+}
+function campOf(key){
+ const sid=+key.slice(1);
+ const inPrey=prey.some(o=>(o.spec||0)===sid);
+ const inPreds=preds.some(o=>(o.spec||0)===sid);
+ return inPrey&&inPreds?'смешанный':inPreds?'хищник':inPrey?'травоядный':'нет живых';
+}
+
+// --- норы ---
+const burrows=[];
+const ENTER_R2=14*14, THREAT_R2=110*110;
+
+const bg=document.createElement('canvas');bg.width=W;bg.height=H;
+(()=>{const b=bg.getContext('2d');b.fillStyle='#1d3224';b.fillRect(0,0,W,H);
+for(let i=0;i<300;i++){b.fillStyle=Math.random()<.5?'#26412d':'#152719';b.beginPath();b.arc(rnd(0,W),rnd(0,H),rnd(15,60),0,7);b.fill();}
+for(let i=0;i<80;i++){b.fillStyle='rgba(96,140,88,0.18)';b.beginPath();b.arc(rnd(0,W),rnd(0,H),rnd(6,20),0,7);b.fill();}})();
+
+// ЕДИНАЯ фабрика особи: облик задаёт форму, лагерь (kind) определяет ген рациона.
+function newCreature(shape,x,y,g,gen){
+ const o={id:uid++,x:x??rnd(10,W-10),y:y??rnd(10,H-10),a:rnd(0,6.28),
+  energy:shape==='tri'?120:60,age:0,gen:gen||1,
+  sex:Math.random()<.5?'m':'f',panic:0,burrow:null,burrowSince:null,
+  spec:0,shape:shape||'poly',kind:null,searching:false,
+  cool:0,tid:null,chaseT:0,
+  g:g||defaultGenes(shape||'poly')};
+ o.kind=o.g.hunt>=DIET_MIGRATE?'r':'p';
+ return o;
+}
+function mutate(g,mr){const o={};for(const k in g)o[k]=cl(g[k]+gauss()*mr);return o;}
+function spawnFood(){if(foods.length<450)foods.push({x:rnd(4,W-4),y:rnd(4,H-4)});}
+
+function pickSex(arr){
+ let m=0;for(const o of arr)if(o.sex==='m')m++;const f=arr.length-m;
+ return Math.random()<0.5+(f-m)/Math.max(1,arr.length)*0.35?'m':'f';}
+
+function preySides(speed){return Math.max(4,Math.round(4+36*Math.pow(1-cl(speed),1.5)));}
+
+// миграция по рациону: один порог DIET_MIGRATE, двусторонняя.
+function migrate(){
+ for(let i=prey.length-1;i>=0;i--){
+  const p=prey[i];
+  if(p.g.hunt>=DIET_MIGRATE){
+   if(p.burrow){p.burrow.occ=Math.max(0,p.burrow.occ-1);p.burrow=null;p.burrowSince=null;}
+   statRec(statKey(p)).mig.toPred++;
+   p.kind='r';p.searching=false;
+   preds.push(p);prey.splice(i,1);
+  }
+ }
+ for(let i=preds.length-1;i>=0;i--){
+  const pr=preds[i];
+  if(pr.g.hunt<DIET_MIGRATE){
+   statRec(statKey(pr)).mig.toPrey++;
+   pr.kind='p';pr.searching=false;pr.tid=null;
+   preds.splice(i,1);prey.push(pr);
+  }
+ }
+}
+
+// удалить жертву из травоядных и не потерять места в норе
+function removeVictim(v){
+ if(v.burrow)v.burrow.occ=Math.max(0,v.burrow.occ-1);
+ const k=prey.indexOf(v);if(k>=0)prey.splice(k,1);
+ afterDeath(v);
+}
+
+// ВЫМИРАНИЕ: если после удаления особи её вид нигде больше не живёт —
+// фиксируем конец ветки, запоминаем последнего представителя и ставим окно в очередь
+function afterDeath(o){
+ const sid=o.spec||0;
+ if(!specTree[sid])return;
+ const alive=prey.some(q=>(q.spec||0)===sid)||preds.some(q=>(q.spec||0)===sid);
+ if(alive)return;
+ const rec=specStats['s'+sid];
+ if(!rec||rec.diedTick!==null)return;
+ rec.diedTick=tick;
+ specTree[sid].diedTick=tick;
+ specTree[sid].gEnd={...o.g}; // портрет конца ветки — последний представитель
+ extEvents.push({sid,shape:o.shape,g:{...o.g}});
+ extLog.push({sid,name:nameOf(sid),bornTick:rec.bornTick,diedTick:tick,
+  maxPop:rec.maxPop,totalEver:(rec.initCount||0)+rec.births});
+ paused=true;
+ $('btnPause').textContent='Продолжить';
+}
+
+function burrowMaintenance(){
+ for(let i=burrows.length-1;i>=0;i--){
+  const b=burrows[i];
+  b.expiries=b.expiries.filter(t=>t>tick);
+  b.cap=b.expiries.length;
+  if(b.cap<=0)burrows.splice(i,1);
+ }
+ const counts=new Map();
+ for(const p of prey)if(p.burrow)counts.set(p.burrow,(counts.get(p.burrow)||0)+1);
+ for(const b of burrows)b.occ=counts.get(b)||0;
+ for(const p of prey){
+  if(p.burrow&&counts.get(p.burrow)>p.burrow.cap){
+   const b=p.burrow;
+   counts.set(b,(counts.get(b)||1)-1);
+   p.burrow=null;p.burrowSince=null;p.panic=40;
+   p.x=b.x+rnd(-24,24);p.y=b.y+rnd(-24,24);
+  }
+ }
+}
+
+function birthStat(o){
+ statRec(statKey(o)).births++;
+}
+// ============================================================
+// ШАГ СИМУЛЯЦИИ — один тик мира
+// ============================================================
+function step(){
+ const mr=+$('mutRate').value,cal=+$('foodCal').value,hunt=+$('huntCh').value;
+ foodAcc+=+$('foodRate').value;
+ while(foodAcc>=1){foodAcc--;spawnFood();}
+ migrate();
+ if(tick%60===0){
+  const resP=classifyArr(prey,GENES_ALL,false);
+  const resR=classifyArr(preds,GENES_ALL,true);
+  readyBySpecP=resP.readyBySpec;readyBySpecR=resR.readyBySpec;
+  specInfoP=resP.infoBest?Math.round(resP.infoBest.score*100)+'% (особей '+resP.infoBest.count+'/'+SPEC_MIN+' у «'+nameOf(resP.infoBest.parent)+'», гены '+resP.infoBest.genGap.toFixed(2)+' из '+SPEC_SPLIT+', '+RU_NAMES[resP.infoBest.singName]+' '+resP.infoBest.singGap.toFixed(2)+' из '+SPEC_SINGLE+')':'пока нет кандидатов';
+  specInfoR=resR.infoBest?Math.round(resR.infoBest.score*100)+'% (особей '+resR.infoBest.count+'/'+SPEC_MIN+' у «'+nameOf(resR.infoBest.parent)+'», гены '+resR.infoBest.genGap.toFixed(2)+' из '+SPEC_SPLIT+', '+RU_NAMES[resR.infoBest.singName]+' '+resR.infoBest.singGap.toFixed(2)+' из '+SPEC_SINGLE+')':'пока нет кандидатов';
+  if(specEvents.length){paused=true;$('btnPause').textContent='Продолжить';}
+ }
+ burrowMaintenance();
+
+ // --- травоядные ---
+ for(let i=prey.length-1;i>=0;i--){
+  const p=prey[i],g=p.g;p.age++;if(p.age>maxAge)maxAge=p.age;
+  p.searching=false;
+  const meta=0.01+0.016*g.speed+0.006*g.size+0.003*g.vision+0.003*g.camo+0.004*g.pack+0.003*g.dig+LOVE_COST*g.love+0.006*g.hunt;
+
+  if(p.burrow!=null){
+   const b=p.burrow;
+   p.energy-=meta*burrowEnergyMult(g.dig);
+   let threat=false;
+   for(const pr of preds)if(d2(pr,b)<THREAT_R2){threat=true;break;}
+   if(p.energy>=110){
+    p.searching=true;
+    let m=null;
+    for(const q of prey){if(q!==p&&q.burrow===b&&q.sex!==p.sex&&q.energy>=110&&mateFit(p,q)){m=q;break;}}
+    if(m){p.energy=55;m.energy=55;p.searching=false;
+     const c=newCreature(p.shape,b.x+rnd(-6,6),b.y+rnd(-6,6),mutate(g,mr),p.gen+1);
+     c.sex=pickSex(prey);
+     c.spec=geneDist(c.g,g,GENES_ALL)<=geneDist(c.g,m.g,GENES_ALL)?p.spec:m.spec;
+     if(c.gen>maxGen)maxGen=c.gen;
+     if(b.occ<b.cap){c.burrow=b;c.burrowSince=tick;b.occ++;}
+     prey.push(c);birthStat(c);
+    }
+   }
+   const stayOk=tick-p.burrowSince>=BURROW_MIN_STAY;
+   if(stayOk&&((!threat&&p.energy<130)||(threat&&p.energy<25))){
+    p.burrow=null;p.burrowSince=null;p.x=b.x+rnd(-28,28);p.y=b.y+rnd(-28,28);p.a=rnd(0,6.28);
+   }
+   p.energy=Math.min(p.energy,150);
+   if(p.energy<=0){dead++;deathStat(p,'starve');prey.splice(i,1);afterDeath(p);}
+   continue;
+  }
+
+  const vis=40+g.vision*140;
+  let danger=null,dd=1e18;
+  for(const pr of preds){const d=d2(pr,p);const see=vis*(1-0.85*pr.g.camo);if(d<dd&&d<see*see){dd=d;danger=pr;}}
+  if(g.hunt<=KIN_HUNT_MIN)for(const q of prey){if(q!==p&&q.burrow==null&&q.g.hunt>KIN_HUNT_MIN){const d=d2(q,p);const see=vis*0.7*(1-0.6*q.g.camo);if(d<dd&&d<see*see){dd=d;danger=q;}}}
+  let sp=g.speed*4.5;
+  if(p.panic>0){p.panic--;sp*=1.6;p.energy-=0.01;}
+
+  if(danger){
+   p.energy-=0.012;
+   let bi=null,bd=1e18;
+   for(const b of burrows){if(b.occ>=b.cap)continue;const d=d2(b,p);if(d<bd){bd=d;bi=b;}}
+   if(bi&&bd<200*200){
+    p.a=Math.atan2(bi.y-p.y,bi.x-p.x);
+    if(bd<ENTER_R2){p.burrow=bi;p.burrowSince=tick;p.panic=0;
+     p.x=bi.x+rnd(-6,6);p.y=bi.y+rnd(-6,6);continue;}
+   }else{
+    p.a=Math.atan2(p.y-danger.y,p.x-danger.x)+gauss()*0.2;sp*=1.15;
+   }
+  } else if(g.hunt>KIN_HUNT_MIN&&p.energy>=90){
+   let v=null,vd=1e18;
+   for(const q of prey){if(q!==p&&q.burrow==null&&q.g.size<g.size-0.05){const d=d2(q,p);const see=(30+g.vision*120)*(1-0.6*q.g.camo);if(d<vd&&d<see*see){vd=d;v=q;}}}
+   if(v){
+    p.a=Math.atan2(v.y-p.y,v.x-p.x);sp*=1.2;p.energy-=0.015;
+    if(vd<Math.pow(4+g.size*5,2)){
+     const adv2=Math.max(0.1,Math.min(0.9,0.5+(g.size-v.g.size)*1.2+(g.speed-v.g.speed)*0.8))*(1-0.3*v.g.camo);
+     if(Math.random()<adv2){
+      killedKin++;
+      const gain=35+v.energy*0.5;
+      p.energy=Math.min(150,p.energy+packShare(p,prey,p.x,p.y,gain,150));
+      deathStat(v,'kinKill',statKey(p));
+      removeVictim(v);
+     } else v.panic=60;
+    }
+   } else {
+    const nf=nearestFood(p.x,p.y);
+    if(nf.f&&nf.fd<vis*vis)p.a=Math.atan2(nf.f.y-p.y,nf.f.x-p.x);else p.a+=gauss()*0.3;
+   }
+  } else if(p.energy>=110){
+   p.searching=true;
+   const mr2=mateRange(g.love,false);
+   let m=null,md=1e18;
+   for(const q of prey){if(partnerOK(p,q,110,false)){const d=d2(q,p);if(d<md){md=d;m=q;}}}
+   if(m&&md<mr2*mr2){
+    p.a=Math.atan2(m.y-p.y,m.x-p.x);sp*=0.8;
+    if(md<100){
+     p.energy=55;m.energy=55;p.searching=false;
+     const c=newCreature(p.shape,p.x+rnd(-6,6),p.y+rnd(-6,6),mutate(g,mr),p.gen+1);
+     c.sex=pickSex(prey);
+     c.spec=geneDist(c.g,g,GENES_ALL)<=geneDist(c.g,m.g,GENES_ALL)?p.spec:m.spec;
+     if(c.gen>maxGen)maxGen=c.gen;prey.push(c);birthStat(c);
+    }
+   } else {p.a+=gauss()*0.25;sp*=0.6;}
+  } else {
+   const nf=nearestFood(p.x,p.y);
+   if(nf.f&&nf.fd<vis*vis)p.a=Math.atan2(nf.f.y-p.y,nf.f.x-p.x);
+   else p.a+=gauss()*0.3;
+  }
+
+  if(!danger&&g.dig>=DIG_THRESHOLD&&Math.random()<DIG_RATE){
+   const myMax=digMaxSlots(g.dig);
+   let bi=null,bd=1e18;
+   for(const b of burrows){if(b.cap>=myMax)continue;const d=d2(b,p);if(d<bd&&d<40*40){bd=d;bi=b;}}
+   const cost=DIG_COST_BASE-DIG_COST_REDUCTION*g.dig;
+   if(bi){
+    bi.expiries.push(tick+BURROW_LIFE);
+    bi.cap=bi.expiries.length;
+    p.energy-=cost;
+   }else if(burrows.length<MAX_BURROWS){
+    const tooClose=burrows.some(b=>d2(b,p)<BURROW_MIN_DIST*BURROW_MIN_DIST);
+    if(!tooClose){
+     burrows.push({x:p.x,y:p.y,cap:1,expiries:[tick+BURROW_LIFE],occ:0});
+     p.energy-=cost*NEW_BURROW_MULT;
+    }
+   }
+  }
+
+  if(!danger&&g.pack>0.25){
+   let lead=null,ld=1e18;
+   for(const q of prey){
+    if(q===p||q.burrow!=null)continue;
+    if(q.g.pack<g.pack)continue;
+    if(q.g.pack===g.pack&&(q.age<p.age||(q.age===p.age&&q.id<p.id)))continue;
+    const d=d2(q,p);
+    if(d<PACK_LEAD_R*PACK_LEAD_R&&d<ld){ld=d;lead=q;}
+   }
+   if(lead&&ld>PACK_FOLLOW_MIN*PACK_FOLLOW_MIN){
+    const ta=Math.atan2(lead.y-p.y,lead.x-p.x);
+    let da=ta-p.a;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;
+    p.a+=da*0.25*g.pack;
+   }
+  }
+
+  p.x+=Math.cos(p.a)*sp;p.y+=Math.sin(p.a)*sp;walls(p);
+  for(let j=foods.length-1;j>=0;j--){const f=foods[j],dx=f.x-p.x,dy=f.y-p.y;
+   if(dx*dx+dy*dy<Math.pow(3+g.size*5,2)){p.energy+=cal;foods.splice(j,1);break;}}
+  p.energy-=meta;
+  p.energy=Math.min(p.energy,150);
+  if(p.energy<=0){dead++;deathStat(p,'starve');prey.splice(i,1);afterDeath(p);continue;}
+ }
+
+ // --- хищники ---
+ for(let i=preds.length-1;i>=0;i--){
+  const pr=preds[i],g=pr.g;pr.age++;if(pr.age>maxAgePred)maxAgePred=pr.age;
+  pr.searching=false;
+  const meta=0.09+0.06*g.speed+0.02*g.size+0.008*g.vision+0.005*g.camo+0.02*g.pack+0.004*g.dig+LOVE_COST*g.love+0.015*g.hunt;
+
+  if(pr.cool>0){
+   pr.cool--;pr.energy-=meta*1.2;
+   pr.a+=gauss()*0.4;
+   pr.x+=Math.cos(pr.a)*g.speed*1.8;pr.y+=Math.sin(pr.a)*g.speed*1.8;walls(pr);
+   if(pr.energy<=0){deadPred++;deathStat(pr,'starve');preds.splice(i,1);afterDeath(pr);}
+   continue;
+  }
+
+  let sp=g.speed*5;
+  const pvis=40+g.vision*140;
+  const seek=pr.energy>=200;
+  let t=null,dd=1e18;
+  if(!seek&&g.hunt>=DIET_MIGRATE){
+   for(const p of prey){
+    const d=d2(p,pr);
+    if(p.burrow!=null)continue;
+    if(p.g.size>g.size+SIZE_ATTACK_MARGIN)continue;
+    const see=pvis*(1-0.9*p.g.camo)+p.g.size*6;
+    if(d<see*see&&d<dd){dd=d;t=p;}
+   }
+  }
+  if(seek){
+   pr.searching=true;
+   const mr2=mateRange(g.love,true);
+   let m=null,md=1e18;
+   for(const q of preds){if(partnerOK(pr,q,200,true)){const d=d2(q,pr);if(d<md){md=d;m=q;}}}
+   if(m&&md<mr2*mr2){
+    pr.a=Math.atan2(m.y-pr.y,m.x-pr.x);sp*=0.9;
+    if(md<144){
+     pr.energy=115;m.energy=115;pr.searching=false;
+     const c=newCreature('tri',pr.x+rnd(-8,8),pr.y+rnd(-8,8),mutate(g,mr),pr.gen+1);
+     c.sex=pickSex(preds);
+     c.spec=geneDist(c.g,g,GENES_ALL)<=geneDist(c.g,m.g,GENES_ALL)?pr.spec:m.spec;
+     if(c.gen>maxGenPred)maxGenPred=c.gen;
+     preds.push(c);birthStat(c);
+    }
+   } else {pr.a+=gauss()*0.3;sp*=0.7;}
+  } else if(t){
+   if(pr.tid!==t){pr.tid=t;pr.chaseT=0;}
+   pr.chaseT++;
+   pr.a=Math.atan2(t.y-pr.y,t.x-pr.x);sp*=1.25;pr.energy-=0.01;
+   if(dd<Math.pow(4+g.size*6+t.g.size*4,2)){
+    let adv=0.5+(g.speed-t.g.speed)*0.9+(g.size-t.g.size)*0.35;
+    let allies=0;
+    for(const o of preds)if(o!==pr&&d2(o,t)<90*90)allies++;
+    adv+=allies*0.12*g.pack;
+    let herd=0;
+    for(const o of prey)if(o!==t&&d2(o,t)<80*80)herd++;
+    adv-=herd*0.07*(0.3+t.g.pack*0.7);
+    adv*=(0.35+0.65*g.hunt);
+    const chance=Math.max(0.05,Math.min(0.95,adv))*hunt*(1-0.3*t.g.camo);
+    if(Math.random()<chance){
+     eaten++;
+     const gain=45+t.g.size*50+t.energy*0.4;
+     pr.energy=Math.min(260,pr.energy+packShare(pr,preds,t.x,t.y,gain,260));
+     deathStat(t,'eaten',statKey(pr));
+     removeVictim(t);
+     pr.tid=null;pr.chaseT=0;
+    } else {
+     t.panic=100;
+     pr.cool=170;pr.tid=null;pr.chaseT=0;
+    }
+   } else if(pr.chaseT>400){pr.cool=140;pr.tid=null;pr.chaseT=0;}
+  } else {
+   pr.a+=gauss()*0.25;
+   if(g.hunt<DIET_MIGRATE+0.05){
+    const nf=nearestFood(pr.x,pr.y);
+    if(nf.f&&nf.fd<Math.pow(60+g.vision*100,2))pr.a=Math.atan2(nf.f.y-pr.y,nf.f.x-pr.x);
+   } else if(g.dig>=DIG_THRESHOLD&&pr.energy>=120){
+    const myMax=digMaxSlots(g.dig);
+    let bi=null,bd=1e18;
+    for(const b of burrows){if(!b.occ)continue;if(b.cap>myMax)continue;const d=d2(b,pr);if(d<bd&&d<Math.pow(120+g.vision*120,2)){bd=d;bi=b;}}
+    if(bi){
+     pr.a=Math.atan2(bi.y-pr.y,bi.x-pr.x);sp*=1.1;pr.energy-=0.008;
+     if(bd<25*25){
+      const chance=Math.max(0.05,Math.min(0.8,0.2+0.5*g.dig-0.03*bi.cap))*hunt;
+      if(Math.random()<chance){
+       const victims=prey.filter(q=>q.burrow===bi);
+       if(victims.length){
+        const v=victims[Math.floor(Math.random()*victims.length)];
+        eaten++;
+        const gain=45+v.g.size*50+v.energy*0.4;
+        pr.energy=Math.min(260,pr.energy+packShare(pr,preds,v.x,v.y,gain,260));
+        deathStat(v,'eaten',statKey(pr));
+        removeVictim(v);
+        pr.cool=200;
+       }
+      }else pr.cool=250;
+     }
+    }
+   }
+   if(g.pack>0.3){
+    let lead=null,ld=1e18;
+    for(const o of preds){
+     if(o===pr)continue;
+     if(o.g.pack<g.pack)continue;
+     if(o.g.pack===g.pack&&(o.age<pr.age||(o.age===pr.age&&o.id<pr.id)))continue;
+     const d=d2(o,pr);
+     if(d<PACK_LEAD_R*PACK_LEAD_R&&d<ld){ld=d;lead=o;}
+    }
+    if(lead&&ld>PACK_FOLLOW_MIN*PACK_FOLLOW_MIN){
+     const ta=Math.atan2(lead.y-pr.y,lead.x-pr.x);
+     let da=ta-pr.a;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;
+     pr.a+=da*0.5;
+    }
+   }
+  }
+
+  pr.x+=Math.cos(pr.a)*sp;pr.y+=Math.sin(pr.a)*sp;walls(pr);
+  if(g.hunt<DIET_MIGRATE+0.05)for(let j=foods.length-1;j>=0;j--){const f=foods[j],dx=f.x-pr.x,dy=f.y-pr.y;
+   if(dx*dx+dy*dy<64){pr.energy=Math.min(260,pr.energy+cal*(1.4-g.hunt));foods.splice(j,1);break;}}
+  pr.energy-=meta;
+  pr.energy=Math.min(pr.energy,260);
+  if(pr.energy<=0){deadPred++;deathStat(pr,'starve');preds.splice(i,1);afterDeath(pr);continue;}
+ }
+
+ tick++;
+ if(tick%30===0){
+  const counts={};
+  for(const o of prey){const k=statKey(o);counts[k]=(counts[k]||0)+1;}
+  for(const o of preds){const k=statKey(o);counts[k]=(counts[k]||0)+1;}
+  hist.push({counts,tick});
+  if(hist.length>220)hist.shift();
+  for(const k in counts){const rec=statRec(k);rec.lastCount=counts[k];if(counts[k]>rec.maxPop)rec.maxPop=counts[k];}
+  for(const k in specStats)if(counts[k]===undefined)statRec(k).lastCount=0;
+  if(tick%300===0){
+   const bySpec={};
+   for(const o of prey)(bySpec[statKey(o)]=bySpec[statKey(o)]||[]).push(o);
+   for(const o of preds)(bySpec[statKey(o)]=bySpec[statKey(o)]||[]).push(o);
+   for(const k in bySpec){
+    const gAvg={};for(const ge of GENES_ALL)gAvg[ge]=+mean(bySpec[k],o=>o.g[ge]).toFixed(3);
+    statRec(k).genesHistory.push({tick,avg:gAvg,count:bySpec[k].length});
+   }
+  }
+ }
+}
+function dietColor(h){
+ const hue=120*(1-cl(h));
+ return `hsl(${hue.toFixed(0)},75%,45%)`;
+}
+function camoAlpha(c){return Math.max(0.25,1-0.75*c);}
+function digStroke(d){
+ if(d<DIG_THRESHOLD)return null;
+ const o=0.15+0.7*d;
+ return `rgba(139,105,66,${o.toFixed(2)})`;
+}
+
+function poly(x,y,r,n,rot){ctx.beginPath();for(let i=0;i<n;i++){const a=rot+i*2*Math.PI/n;
+ i?ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r):ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();}
+function star(x,y,r,sp,rot){ctx.beginPath();for(let i=0;i<sp*2;i++){const rr=i%2?r*0.55:r;const a=rot+i*Math.PI/sp;
+ i?ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr):ctx.moveTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}ctx.closePath();}
+function eyes(x,y,a,r,vision){
+ const off=r*0.55,side=r*0.45,er=1+vision*2.4;
+ const ex=x+Math.cos(a)*off,ey=y+Math.sin(a)*off;
+ const px=-Math.sin(a),py=Math.cos(a);
+ ctx.fillStyle='#eafff2';
+ for(const s of[-1,1]){ctx.beginPath();ctx.arc(ex+px*side*s,ey+py*side*s,er,0,7);ctx.fill();}
+ ctx.fillStyle='#0b1f14';
+ for(const s of[-1,1]){ctx.beginPath();ctx.arc(ex+px*side*s,ey+py*side*s,er*0.5,0,7);ctx.fill();}
+}
+function seekRing(x,y,r,love){
+ const rr=r+4+(love?LOVE_RING_MAX*love:0);
+ ctx.strokeStyle=`rgba(255,140,190,${(0.45+0.35*(love||0)).toFixed(2)})`;
+ ctx.lineWidth=1.4;
+ ctx.beginPath();ctx.arc(x,y,rr,0,7);ctx.stroke();
+}
+function highlightRing(x,y,r,key){
+ if(!highlighted.has(key))return;
+ ctx.setLineDash([4,3]);
+ ctx.strokeStyle=colorForKey(key);ctx.lineWidth=1.8;
+ ctx.beginPath();ctx.arc(x,y,r+6,0,7);ctx.stroke();
+ ctx.setLineDash([]);
+}
+function sexDot(x,y,r,sex){
+ ctx.fillStyle=sex==='f'?'#ff7ab0':'#58b6ff';
+ ctx.beginPath();ctx.arc(x,y-r-4,1.8,0,7);ctx.fill();}
+function digRing(x,y,r,d){
+ const sc=digStroke(d);
+ if(!sc)return;
+ ctx.strokeStyle=sc;
+ ctx.lineWidth=1+3*d;
+ ctx.beginPath();ctx.arc(x,y,r+2+3*d,0,7);ctx.stroke();
+}
+
+function draw(){
+ ctx.drawImage(bg,0,0);
+ for(const b of burrows){
+  const rr=8+b.cap*2.2;
+  ctx.fillStyle='rgba(8,14,10,0.92)';
+  ctx.beginPath();ctx.ellipse(b.x,b.y,rr,rr*0.75,0,0,7);ctx.fill();
+  ctx.strokeStyle=b.occ>0?'rgba(180,220,180,0.5)':'rgba(120,160,120,0.28)';
+  ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='rgba(120,160,120,0.55)';ctx.font='9px Arial';
+  ctx.fillText(b.occ+'/'+b.cap,b.x-9,b.y-rr-4);
+ }
+ ctx.fillStyle='#ffe066';
+ for(const f of foods){ctx.beginPath();ctx.arc(f.x,f.y,2.2,0,7);ctx.fill();}
+ for(const p of prey){
+  const isStar=p.shape==='star';
+  const r=isStar?3+p.g.size*6:2+p.g.size*5;
+  const sides=preySides(p.g.speed);
+  const al=camoAlpha(p.g.camo);
+  if(p.burrow!=null){
+   ctx.globalAlpha=0.4*al;
+   ctx.fillStyle=dietColor(p.g.hunt);
+   isStar?star(p.x,p.y,r,6,p.a):poly(p.x,p.y,r,sides,p.a);ctx.fill();
+   ctx.globalAlpha=1;continue;
+  }
+  ctx.globalAlpha=al;
+  ctx.fillStyle=dietColor(p.g.hunt);
+  isStar?star(p.x,p.y,r,6,p.a):poly(p.x,p.y,r,sides,p.a);ctx.fill();
+  eyes(p.x,p.y,p.a,r,p.g.vision);
+  ctx.globalAlpha=1;
+  digRing(p.x,p.y,r,p.g.dig);
+  if(p.g.pack>0.4){
+   ctx.strokeStyle='rgba(201,160,255,0.4)';ctx.lineWidth=1;
+   ctx.beginPath();ctx.arc(p.x,p.y,r+3,0,7);ctx.stroke();
+  }
+  if(p.searching)seekRing(p.x,p.y,r,p.g.love);
+  highlightRing(p.x,p.y,r,statKey(p));
+  sexDot(p.x,p.y,r,p.sex);
+ }
+ for(const pr of preds){
+  const s=6+pr.g.size*8;
+  const stretch=1+pr.g.speed*0.6;
+  const pk=pr.g.pack;
+  const al=camoAlpha(pr.g.camo);
+  const isStarP=pr.shape==='star';
+  ctx.save();
+  ctx.globalAlpha=pr.cool>0?0.45*al:al;
+  ctx.fillStyle=dietColor(pr.g.hunt);
+  if(isStarP){
+   star(pr.x,pr.y,s,6,pr.a);ctx.fill();
+   if(pk>0.5){ctx.lineWidth=1+pk*2;ctx.strokeStyle=`rgba(201,160,255,${0.2+pk*0.5})`;ctx.stroke();}
+   const dsc=digStroke(pr.g.dig);
+   if(dsc){ctx.strokeStyle=dsc;ctx.lineWidth=1+3*pr.g.dig;ctx.stroke();}
+   eyes(pr.x,pr.y,pr.a,s*0.5,pr.g.vision);
+  }else{
+   ctx.translate(pr.x,pr.y);ctx.rotate(pr.a);
+   ctx.beginPath();ctx.moveTo(s*stretch,0);ctx.lineTo(-s*.7,s*.55);ctx.lineTo(-s*.7,-s*.55);ctx.closePath();ctx.fill();
+   if(pk>0.5){ctx.lineWidth=1+pk*2;ctx.strokeStyle=`rgba(201,160,255,${0.2+pk*0.5})`;ctx.stroke();}
+   const dsc=digStroke(pr.g.dig);
+   if(dsc){ctx.strokeStyle=dsc;ctx.lineWidth=1+3*pr.g.dig;ctx.stroke();}
+   eyes(0,0,0,s*0.5,pr.g.vision);
+  }
+  ctx.globalAlpha=1;ctx.restore();
+  if(pr.searching)seekRing(pr.x,pr.y,s,pr.g.love);
+  highlightRing(pr.x,pr.y,s,statKey(pr));
+  sexDot(pr.x,pr.y,s,pr.sex);
+ }
+}
+
+function colorForKey(k){
+ const sid=+k.slice(1);
+ if(sid===0)return '#5fcf80';
+ if(sid===1)return '#f2c14e';
+ return `hsl(${(160+sid*137.5)%360},75%,60%)`;
+}
+function drawChart(){
+ chc.fillStyle='#0d1512';chc.fillRect(0,0,282,90);
+ let mx=10;
+ for(const h of hist)for(const k in h.counts)mx=Math.max(mx,h.counts[k]);
+ const keys=[];
+ for(const h of hist)for(const k in h.counts)if(!keys.includes(k))keys.push(k);
+ const last=hist.length?hist[hist.length-1].counts:{};
+ let chips=0;
+ for(const k of keys){
+  chc.strokeStyle=colorForKey(k);chc.lineWidth=1.3;chc.beginPath();
+  hist.forEach((h,i)=>{const v=h.counts[k]||0;const x=4+i*(274/219),y=86-80*(v/mx);i?chc.lineTo(x,y):chc.moveTo(x,y);});
+  chc.stroke();
+  if(last[k]&&chips<9){chc.fillStyle=colorForKey(k);chc.fillRect(4+chips*22,2,10,5);chips++;}
+ }
+}
+
+function mean(arr,f){return arr.length?arr.reduce((s,o)=>s+f(o),0)/arr.length:0;}
+function bar(col,v){const w=Math.max(0,Math.min(100,Math.round(v*100)));
+ return `<div class="bar"><div style="width:${w}%;background:${col}"></div></div>`;}
+function geneRow(arr,k,readyInfo){
+ const label=RU_NAMES[k];
+ if(!arr.length){
+  const emptyCol=k==='hunt'?dietColor(0.25):(BASECOL[k]||COL_SPEED);
+  return `<div class="lbl">${label}</div><div class="bar"><div style="width:0;background:${emptyCol}"></div></div>`;
+ }
+ let a=1,b=0;for(const o of arr){const v=o.g[k];if(v<a)a=v;if(v>b)b=v;}
+ const avg=mean(arr,o=>o.g[k]);
+ const bcol=k==='hunt'?dietColor(avg):(BASECOL[k]||COL_SPEED);
+ const r=readyInfo||null;
+ const warn=(b-a)>SPEC_SINGLE;
+ const rcTxt=r&&r.n>0?` · 🧬${r.n}/${SPEC_MIN} ♂${r.m} ♀${r.f}`:'';
+ const okSex=r&&r.n>=SPEC_MIN&&sexRatioOK(r.m,r.f);
+ const spanCol=okSex?'#7dff9a':(warn||r?'#ffd75e':'#8aa892');
+ return `<div class="lbl">${label} <b>${avg.toFixed(2)}</b><span style="float:right;color:${spanCol}">${warn?'⚠ ':''}${a.toFixed(2)}–${b.toFixed(2)}${rcTxt}</span></div>`+
+        bar(bcol,avg);
+}
+function digSvgStroke(d){
+ if(d<DIG_THRESHOLD)return '';
+ return ` stroke="rgba(139,105,66,${(0.15+0.7*d).toFixed(2)})" stroke-width="${(1+3*d).toFixed(1)}"`;
+}
+
+function svgPrey(m,S=30,shape){
+ const g=avgGenes(m);
+ const isStar=shape==='star';
+ const r=isStar?4+g.size*10:4+g.size*11;
+ let pts=[];
+ if(isStar){
+  for(let i=0;i<12;i++){const rr=i%2?r*0.55:r;const a=-Math.PI/2+i*Math.PI/6;
+   pts.push((17+Math.cos(a)*rr).toFixed(1)+','+(17+Math.sin(a)*rr).toFixed(1));}
+ }else{
+  const sides=preySides(g.speed);
+  for(let i=0;i<sides;i++){const a=-Math.PI/2+i*2*Math.PI/sides;
+   pts.push((17+Math.cos(a)*r).toFixed(1)+','+(17+Math.sin(a)*r).toFixed(1));}
+ }
+ const er=(1.1+g.vision*3).toFixed(1),ex=(17+r*0.45).toFixed(1),ey=(17-r*0.25).toFixed(1);
+ const op=Math.max(0.25,1-0.75*g.camo).toFixed(2);
+ return `<svg width="${S}" height="${S}" viewBox="0 0 34 34" style="vertical-align:middle;margin-left:4px">`+
+  `<polygon points="${pts.join(' ')}" fill="${dietColor(g.hunt)}" fill-opacity="${op}" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>`+
+  `<circle cx="17" cy="17" r="${(r+2+3*g.dig).toFixed(1)}" fill="none"${digSvgStroke(g.dig)}/>`+
+  `<circle cx="${(17-r*0.45-3).toFixed(1)}" cy="${ey}" r="${er}" fill="#eafff2"/>`+
+  `<circle cx="${ex}" cy="${ey}" r="${er}" fill="#eafff2"/>`+
+  `<circle cx="${(17-r*0.45-3).toFixed(1)}" cy="${ey}" r="${(er*0.5).toFixed(1)}" fill="#0b1f14"/>`+
+  `<circle cx="${ex}" cy="${ey}" r="${(er*0.5).toFixed(1)}" fill="#0b1f14"/></svg>`;
+}
+function svgPred(m,S=30){
+ const g=avgGenes(m);
+ const st=4+g.size*10,stretch=1+g.speed*0.6;
+ const op=Math.max(0.25,1-0.75*g.camo).toFixed(2);
+ const pkStroke=g.pack>0.5?` stroke="rgba(201,160,255,${(0.2+g.pack*0.5).toFixed(2)})" stroke-width="${(1+g.pack*2).toFixed(1)}"`:digSvgStroke(g.dig);
+ const er=(1.1+g.vision*3).toFixed(1),ex=(17+st*stretch*0.55).toFixed(1),ey1=(17-st*0.25).toFixed(1),ey2=(17+st*0.25).toFixed(1);
+ return `<svg width="${S}" height="${S}" viewBox="0 0 34 34" style="vertical-align:middle;margin-left:4px">`+
+  `<polygon points="${(17+st*stretch).toFixed(1)},17 ${(17-st*0.7).toFixed(1)},${(17+st*0.55).toFixed(1)} ${(17-st*0.7).toFixed(1)},${(17-st*0.55).toFixed(1)}" fill="${dietColor(g.hunt)}" fill-opacity="${op}"${pkStroke}/>`+
+  `<circle cx="${ex}" cy="${ey1}" r="${er}" fill="#eafff2"/>`+
+  `<circle cx="${ex}" cy="${ey2}" r="${er}" fill="#eafff2"/>`+
+  `<circle cx="${ex}" cy="${ey1}" r="${(er*0.5).toFixed(1)}" fill="#0b1f14"/>`+
+  `<circle cx="${ex}" cy="${ey2}" r="${(er*0.5).toFixed(1)}" fill="#0b1f14"/></svg>`;
+}
+function svgPortrait(m,shape,S){
+ if(shape==='tri')return svgPred(m,S);
+ return svgPrey(m,S,shape);
+}
+function sexStr(arr){let m=0;for(const o of arr)if(o.sex==='m')m++;return `♂${m} ♀${arr.length-m}`;}
+
+const specLog=[];
+
+// единая очередь «праздничных» окон: сначала расколы, потом вымирания
+function pumpEvents(){
+ if($('specModal').style.display==='flex')return;
+ if(specEvents.length)showSpecEvent();
+ else if(extEvents.length)showExtEvent();
+}
+// после «ОК» в любом окне — показать следующее или отпустить паузу
+function afterEventOK(){
+ if(specEvents.length)showSpecEvent();
+ else if(extEvents.length)showExtEvent();
+ else{paused=false;$('btnPause').textContent='Пауза';}
+}
+
+function showSpecEvent(){
+ const ev=specEvents[0];
+ const name=specNames[ev.id]||('вид №'+ev.id);
+ const parentName=nameOf(ev.parentSid);
+ let rows='';
+ for(const k of GENES_ALL)rows+=geneRow(ev.members,k,null);
+ $('specBox').innerHTML=
+  `<div class="row"><label><h2>🎉 Новый вид!</h2></label><input type="text" id="specName" value="${esc(name)}" style="width:180px"></div>`+
+  `<div style="text-align:center">${svgPortrait(ev.members,ev.members[0].shape,64)}</div>`+
+  `<div>Отделился от: <b>${esc(parentName)}</b> · 👥${ev.count} · ♂${ev.m} ♀${ev.f} · 📅 тик ${ev.bornTick}</div>`+
+  `<div>Главный признак раскола: <b>${RU_NAMES[ev.geneName]}</b></div>`+
+  cmpBar(ev.oldMean,ev.newMean)+
+  `<div style="margin-top:6px">Характеристики нового вида:</div>`+rows+
+  `<button id="btnSpecOk">ОК — продолжить мир</button>`;
+ $('specModal').style.display='flex';
+ $('btnSpecOk').onclick=()=>{
+  const v=$('specName').value.trim();
+  if(v){
+   const oldName=specNames[ev.id];
+   if(oldName)usedNames.delete(oldName);
+   specNames[ev.id]=uniqueName(v);
+  }
+  specLog.push({id:ev.id,name:specNames[ev.id],predFlag:ev.predFlag,
+   parentName:parentName,parentSid:ev.parentSid,bornTick:ev.bornTick,
+   geneName:ev.geneName,count:ev.count,m:ev.m,f:ev.f,
+   oldMean:+ev.oldMean.toFixed(3),newMean:+ev.newMean.toFixed(3)});
+  specEvents.shift();
+  $('specModal').style.display='none';
+  afterEventOK();
+ };
+}
+// ============ ОКНО ВЫМИРАНИЯ: последний представитель + вся статистика вида ============
+function showExtEvent(){
+ const ev=extEvents[0];
+ const sid=ev.sid;
+ const rec=specStats['s'+sid];
+ const name=nameOf(sid);
+ const one=[{g:ev.g}]; // портрет последнего представителя
+ let rows='';
+ for(const k of GENES_ALL)rows+=geneRow(one,k,null);
+ const totalEver=(rec.initCount||0)+rec.births;
+ const lived=rec.diedTick-rec.bornTick;
+ $('specBox').innerHTML=
+  `<div class="boxTitle"><h2>☠ Вид вымер!</h2><span class="statChip" style="background:${colorForKey('s'+sid)};width:14px;height:14px"></span></div>`+
+  `<div style="text-align:center">${svgPortrait(one,ev.shape,64)}</div>`+
+  `<div><b style="color:${colorForKey('s'+sid)}">${esc(name)}</b> · 📅 родился на тик ${rec.bornTick} · ☠ умер на тик ${rec.diedTick} · прожил ${lived} тиков</div>`+
+  `<div>👥 максимум: ${rec.maxPop} · всего особей за историю: ${totalEver} (основателей ${rec.initCount||0} + рождено ${rec.births})</div>`+
+  `<div class="lbl">☠ смерти: голод — ${rec.deaths.starve} · убиты: ${killedByList(rec)}</div>`+
+  `<div class="lbl">🧭 миграции: в хищники ${rec.mig.toPred} · в травоядные ${rec.mig.toPrey}</div>`+
+  `<div style="margin-top:6px">Характеристики последнего представителя:</div>`+rows+
+  `<button id="btnExtOk">ОК — продолжить мир</button>`;
+ $('specModal').style.display='flex';
+ $('btnExtOk').onclick=()=>{
+  extEvents.shift();
+  $('specModal').style.display='none';
+  afterEventOK();
+ };
+}
+function cmpBar(oldV,newV){
+ const o=Math.max(2,Math.min(98,oldV*100)).toFixed(1),n=Math.max(2,Math.min(98,newV*100)).toFixed(1);
+ return `<div class="cmpTrack">`+
+  `<div class="cmpDot" style="left:${o}%;top:2px;width:8px;height:8px;margin-left:-4px;background:#7dff9a"></div>`+
+  `<div class="cmpDot" style="left:${n}%;top:0;width:12px;height:12px;margin-left:-6px;background:#7dff9a;border:1px solid #fff"></div></div>`+
+  `<div class="lbl">старый вид: ${oldV.toFixed(2)} · новый вид: <b>${newV.toFixed(2)}</b> (шкала 0–1)</div>`;
+}
+
+function renameSpecies(sid){
+ const cur=nameOf(sid);
+ const v=prompt('Название вида:',cur);
+ if(v&&v.trim()){
+  const nm=uniqueName(v.trim());
+  if(nm!==cur)usedNames.delete(cur);
+  specNames[sid]=nm;
+ }
+ stats();
+}
+function toggleHighlight(key,on){
+ if(on)highlighted.add(key);else highlighted.delete(key);
+}
+
+function speciesSection(arr,readyBySpec){
+ const groups={};
+ for(const o of arr)(groups[o.spec||0]=groups[o.spec||0]||[]).push(o);
+ const ids=Object.keys(groups).map(Number).sort((a,b)=>a-b);
+ let html='';
+ for(const id of ids){
+  const g=groups[id];
+  const key='s'+id;
+  const col=colorForKey(key);
+  const maxGenG=Math.max(...g.map(o=>o.gen));
+  const born=specBorn[id]!==undefined?` · 📅${specBorn[id]}`:'';
+  html+=`<div style="margin-top:5px" class="spName">`+
+   `<span class="lbl hlBox" title="подсветить вид на карте"><input type="checkbox" ${highlighted.has(key)?'checked':''} onchange="toggleHighlight('${key}',this.checked)">👁</span>`+
+   `<b class="spTitle" style="color:${col}" title="нажмите, чтобы переименовать" onclick="renameSpecies(${id})">${esc(nameOf(id))}</b> `+
+   `<span class="lbl">👥${g.length} · ${sexStr(g)} · 🌱${maxGenG}${born}</span>${svgPortrait(g,g[0].shape)}</div>`;
+  const rb=readyBySpec[id]||null;
+  for(const k of GENES_ALL)html+=geneRow(g,k,rb?rb[k]:null);
+ }
+ return html;
+}
+
+function killedByList(rec){
+ const map={};
+ for(const k in rec.deaths.eatenBy)map[k]=(map[k]||0)+rec.deaths.eatenBy[k];
+ for(const k in rec.deaths.kinKillBy)map[k]=(map[k]||0)+rec.deaths.kinKillBy[k];
+ const rows=Object.keys(map).map(k=>({name:nameOf(+k.slice(1)),n:map[k]}));
+ rows.sort((a,b)=>b.n-a.n);
+ return rows.length?rows.map(r=>`«${esc(r.name)}» — ${r.n}`).join(', '):'—';
+}
+
+// дроссель перерисовки модалок: не чаще одного раза в тик —
+// это и лечит «кнопка закрывает не с первого раза» (HTML под курсором менялся в кадре клика)
+let lastModalTick=-1;
+function stats(){
+ $('simSpeedVal').textContent=(+$('simSpeed').value)+'x';
+ const spTotal=speciesCountAll();
+ $('stats').innerHTML=
+  `<div>⏱ Тиков с начала мира: <b>${tick}</b> · видов всего: <b>${spTotal}</b></div>`+
+  `<div>🟢 Травоядные 👥${prey.length} <span class="lbl">(${sexStr(prey)}, 🌱${maxGen})</span></div>`+
+  `<div class="lbl">🔬 кандидаты: ${specInfoP}</div>`+
+  speciesSection(prey,readyBySpecP)+
+  `<div>🔴 Хищники 👥${preds.length} <span class="lbl">(${sexStr(preds)}, 🌱${maxGenPred})</span></div>`+
+  `<div class="lbl">🔬 кандидаты: ${specInfoR}</div>`+
+  speciesSection(preds,readyBySpecR)+
+  `<div class="lbl" style="margin-top:4px">☠ смерти, рождения и миграции — в окне «Статистика» · 🕳 нор: ${burrows.length}</div>`;
+ drawChart();
+ if($('statsModal').style.display==='flex'&&tick!==lastModalTick){renderStatsModal();lastModalTick=tick;}
+}
+
+// ============ ОКНО «СТАТИСТИКА»: сводка мира + подробности по каждому виду ============
+function renderStatsModal(){
+ let migToPred=0,migToPrey=0;
+ for(const k in specStats){migToPred+=specStats[k].mig.toPred;migToPrey+=specStats[k].mig.toPrey;}
+ let html=
+  `<div class="boxTitle"><h2>Статистика мира</h2>`+
+  `<span><button class="helpBtn" id="btnTreeFromStats" title="открыть древо видов" style="margin-right:4px">🌳</button>`+
+  `<button class="helpBtn" id="btnStatsClose">×</button></span></div>`+
+  `<div>⏱ Тиков: <b>${tick}</b> · 🕳 Нор: ${burrows.length} · 👥 Живых: ${prey.length+preds.length} · 🧬 Видов: ${speciesCountAll()}</div>`+
+  `<div>🍽 Съедено хищниками: ${eaten} · ☠ Убито сородичами: ${killedKin}</div>`+
+  `<div>☠ Голодных смертей: ${dead} (травоядные) + ${deadPred} (хищники)</div>`+
+  `<div>⏳ Рекорды возраста: ${maxAge} / ${maxAgePred} тиков · 🌱 Поколения: ${maxGen} / ${maxGenPred}</div>`+
+  `<div>🧭 Миграций всего: в хищники ${migToPred} · в травоядные ${migToPrey}</div>`+
+  `<h3>🧬 Виды</h3>`;
+ const keys=Object.keys(specStats).sort((a,b)=>+a.slice(1)-+b.slice(1));
+ for(const k of keys){
+  const r=specStats[k];
+  const camp=campOf(k);
+  const live=camp!=='нет живых';
+  const totalEver=(r.initCount||0)+r.births;
+  html+=`<div style="margin-top:8px">`+
+   `<span class="statChip" style="background:${colorForKey(k)}"></span>`+
+   `<b style="color:${colorForKey(k)}">${esc(nameOf(+k.slice(1)))}</b> `+
+   `<span class="lbl">(${camp} · ${live?'жив, 👥'+r.lastCount:'вымер'+(r.diedTick!==null?' на тик '+r.diedTick:'')})</span></div>`+
+   `<div class="lbl">👥 максимум: ${r.maxPop} · всего за историю: ${totalEver} · 📅 тик рождения: ${r.bornTick}</div>`+
+   `<div class="lbl">☠ умерло: голод — ${r.deaths.starve} · убиты: ${killedByList(r)}</div>`+
+   `<div class="lbl">🧭 миграции: в хищники ${r.mig.toPred} · в травоядные ${r.mig.toPrey}</div>`;
+ }
+ $('statsBox').innerHTML=html;
+ $('btnTreeFromStats').onclick=()=>{$('statsModal').style.display='none';openTree();};
+}
+// ЗАКРЫТИЕ СТАТИСТИКИ: делегирование на контейнере модалки.
+// Контейнер не пересоздаётся никогда, поэтому клик всегда доходит,
+// даже если содержимое бокса обновилось между mousedown и mouseup.
+$('statsModal').addEventListener('click',e=>{
+ if(e.target.id==='btnStatsClose')$('statsModal').style.display='none';
+});
+
+// ============================================================
+// ДРЕВО ВИДОВ: ветки по временной линии, точки раскола и вымирания,
+// портреты на начало (средние гены при появлении) и на конец (последний представитель)
+// ============================================================
+function buildTreeHTML(){
+ const sids=Object.keys(specTree).map(Number)
+  .sort((a,b)=>specTree[a].bornTick-specTree[b].bornTick||a-b);
+ if(!sids.length)return '<div class="lbl">Древо пусто — запустите мир.</div>';
+ // раскладка по дорожкам: вид занимает свою строку от рождения до смерти/сейчас
+ const lanes=[];const laneOf={};
+ for(const sid of sids){
+  const end=(specTree[sid].diedTick??tick)+1;
+  let L=lanes.findIndex(e=>e<=specTree[sid].bornTick);
+  if(L<0){L=lanes.length;lanes.push(0);}
+  lanes[L]=end;laneOf[sid]=L;
+ }
+ const rows=lanes.length;
+ let maxT=1;
+ for(const sid of sids)maxT=Math.max(maxT,specTree[sid].diedTick??tick);
+ maxT=Math.max(maxT,tick,1);
+ const width=880,padL=66,padR=40,rowH=54,top=10;
+ const xOf=t=>padL+Math.min(1,t/maxT)*(width-padL-padR);
+ const yOf=L=>top+L*rowH+rowH/2;
+ let html=`<div style="position:relative;width:${width}px;height:${top+rows*rowH+12}px">`;
+ for(const sid of sids){
+  const t=specTree[sid],L=laneOf[sid];
+  const col=colorForKey('s'+sid);
+  const x0=xOf(t.bornTick),x1=xOf(t.diedTick??tick),y=yOf(L);
+  // ветка вида во времени
+  html+=`<div style="position:absolute;left:${x0.toFixed(1)}px;top:${(y-1.5).toFixed(1)}px;width:${Math.max(2,x1-x0).toFixed(1)}px;height:3px;background:${col};border-radius:2px;opacity:.85"></div>`;
+  // штрих ответвления от родителя
+  if(t.parent!=null&&laneOf[t.parent]!=null){
+   const py=yOf(laneOf[t.parent]),bx=xOf(t.bornTick);
+   html+=`<div style="position:absolute;left:${bx.toFixed(1)}px;top:${Math.min(py,y).toFixed(1)}px;width:2px;height:${Math.abs(y-py).toFixed(1)}px;background:${col};opacity:.55"></div>`;
+  }
+  // портрет на начало ветки (средние гены при появлении)
+  html+=`<div style="position:absolute;left:${(x0-18).toFixed(1)}px;top:${(y-18).toFixed(1)}px" title="вид при появлении, тик ${t.bornTick}">${svgPortrait([{g:t.g0}],t.shape,36)}</div>`;
+  // подпись вида слева
+  html+=`<div style="position:absolute;left:0;top:${(y-8).toFixed(1)}px;width:${(padL-8).toFixed(0)}px;text-align:right;font-size:10px;color:${col};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nameOf(sid))}</div>`;
+  // конец ветки
+  if(t.diedTick!=null){
+   html+=`<div style="position:absolute;left:${(x1-8).toFixed(1)}px;top:${(y-18).toFixed(1)}px;width:16px;text-align:center;color:#ff6b5e;font-size:14px;font-weight:bold">✕</div>`;
+   const gEnd=t.gEnd||t.g0;
+   html+=`<div style="position:absolute;left:${(x1+6).toFixed(1)}px;top:${(y-18).toFixed(1)}px" title="последний представитель, тик ${t.diedTick}">${svgPortrait([{g:gEnd}],t.shape,36)}</div>`;
+  }else{
+   const cg=currentGenesOf('s'+sid)||t.g0;
+   html+=`<div style="position:absolute;left:${(x1+6).toFixed(1)}px;top:${(y-18).toFixed(1)}px" title="сейчас">${svgPortrait([{g:cg}],t.shape,36)}</div>`;
+   html+=`<div style="position:absolute;left:${(x1-4).toFixed(1)}px;top:${(y-4).toFixed(1)}px;width:8px;height:8px;border-radius:50%;background:${col}"></div>`;
+  }
+ }
+ // шкала времени
+ html+=`<div style="position:absolute;left:${padL}px;top:${top+rows*rowH}px;width:${(width-padL-padR).toFixed(0)}px;text-align:space-between" class="lbl">тик 0${'&nbsp;'.repeat(40)}${maxT}</div>`;
+ html+='</div>';
+ return html;
+}
+function openTree(){
+ $('treeBox').innerHTML=
+  `<div class="boxTitle"><h2>🌳 Древо видов</h2><button class="helpBtn" id="btnTreeClose">×</button></div>`+
+  `<div class="lbl">Начало ветки — портрет вида при появлении (средние гены). Конец — последний представитель; у живых видов — текущий. Красный ✕ — вымирание.</div>`+
+  `<div id="treeScroll">${buildTreeHTML()}</div>`;
+ $('treeModal').style.display='flex';
+ $('btnTreeClose').onclick=()=>{$('treeModal').style.display='none';};
+}
+
+function currentGenesOf(key){
+ const sid=+key.slice(1);
+ const arr=[...prey,...preds].filter(o=>(o.spec||0)===sid);
+ if(!arr.length)return null;
+ const g={};for(const ge of GENES_ALL)g[ge]=+mean(arr,o=>o.g[ge]).toFixed(3);
+ return g;
+}
+function exportJSON(){
+ const totals={tick,eaten,dead,deadPred,killedKin,
+  preyCount:prey.length,predCount:preds.length,burrows:burrows.length,species:speciesCountAll()};
+ const species=[];
+ for(const k in specStats){
+  const r=specStats[k];
+  const cur=currentGenesOf(k);
+  if(!cur&&r.diedTick===null)r.diedTick=tick;
+  const killedBy=[];
+  for(const [kk,n] of Object.entries(r.deaths.eatenBy))killedBy.push({name:nameOf(+kk.slice(1)),cause:'eaten',count:n});
+  for(const [kk,n] of Object.entries(r.deaths.kinKillBy))killedBy.push({name:nameOf(+kk.slice(1)),cause:'kinKill',count:n});
+  killedBy.sort((a,b)=>b.count-a.count);
+  species.push({key:k,name:nameOf(+k.slice(1)),
+   camp:campOf(k),
+   bornTick:r.bornTick,diedTick:r.diedTick,alive:!!cur,
+   births:r.births,initCount:r.initCount||0,totalEver:(r.initCount||0)+r.births,
+   deaths:{starve:r.deaths.starve,killedBy},migrations:{...r.mig},
+   maxPop:r.maxPop,lastCount:r.lastCount,
+   history:hist.map(h=>({tick:h.tick,count:h.counts[k]||0})),
+   genesHistory:r.genesHistory,currentGenes:cur});
+ }
+ const data={
+  meta:{version:'6.0',exportedAt:new Date().toISOString(),tick,totals},
+  settings:{...worldSettings},
+  splits:specLog,
+  extinctions:extLog,
+  tree:Object.fromEntries(Object.entries(specTree).map(([sid,t])=>[sid,{...t,g0:roundGenes(t.g0),gEnd:t.gEnd?roundGenes(t.gEnd):null}])),
+  species};
+ const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='evolution_stats_tick'+tick+'.json';
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function roundGenes(g){const o={};for(const k in g)o[k]=+(+g[k]).toFixed(3);return o;}
+
+// ============================================================
+// КАРУСЕЛЬ И ПРЕДПРОСМОТР — строится из START_SPECIES.
+// ============================================================
+let carIdx=0;
+function buildCarousel(){
+ $('carTrack').innerHTML=START_SPECIES.map((sp,i)=>
+  `<div class="spCard">`+
+   `<div class="row hRow"><input type="checkbox" id="sp${i}Has" checked>`+
+    `<input type="text" id="sp${i}Name" class="nameInput" placeholder="название вида">`+
+    `<input type="number" id="sp${i}Num" min="0" max="1000" value="20"></div>`+
+   `<div id="sp${i}Prev"></div></div>`).join('');
+ for(let i=0;i<START_SPECIES.length;i++){
+  $('sp'+i+'Has').onchange=()=>renderPreview(i);
+  $('sp'+i+'Num').onchange=()=>renderPreview(i);
+ }
+}
+function applyCarousel(){
+ $('carTrack').style.transform=`translateX(-${carIdx*100}%)`;
+ $('carIdx').textContent=`вид ${carIdx+1} из ${START_SPECIES.length}`;
+}
+$('carPrev').onclick=()=>{carIdx=(carIdx+START_SPECIES.length-1)%START_SPECIES.length;applyCarousel();};
+$('carNext').onclick=()=>{carIdx=(carIdx+1)%START_SPECIES.length;applyCarousel();};
+
+function rollSpecies(i){
+ START_SPECIES[i].rolled=rollRanges(START_SPECIES[i].ranges);
+ renderPreview(i);
+}
+
+function renderPreview(i){
+ const sp=START_SPECIES[i];
+ const active=$('sp'+i+'Has').checked&&+$('sp'+i+'Num').value;
+ const rollBtn=`<button class="rollBtn" title="перебросить характеристики" onclick="rollSpecies(${i})">⟳</button>`;
+ if(!active){
+  $('sp'+i+'Prev').innerHTML=`<div class="portRow"><span class="lbl">не участвуют</span>${rollBtn}</div>`;
+  return;
+ }
+ const sample=[];
+ for(let k=0;k<40;k++)sample.push({g:genFrom(sp.rolled)});
+ $('sp'+i+'Prev').innerHTML=
+  `<div class="portRow">${svgPortrait(sample,sp.shape,44)}${rollBtn}</div>`+
+  GENES_ALL.map(k=>geneRow(sample,k,null)).join('');
+}
+
+function loop(){
+ if(started&&!paused){
+  stepAcc=Math.min(stepAcc+(+$('simSpeed').value),4);
+  while(stepAcc>=1){stepAcc-=1;step();}
+ }
+ pumpEvents();
+ draw();
+ if(started&&(tick%15<Math.ceil(+$('simSpeed').value)||paused))stats();
+ requestAnimationFrame(loop);
+}
+
+function reset(){
+ prey=[];preds=[];foods=[];tick=0;maxAge=0;maxAgePred=0;maxGen=1;maxGenPred=1;eaten=0;dead=0;deadPred=0;killedKin=0;hist=[];stepAcc=0;foodAcc=0;
+ specInfoP='—';specInfoR='—';
+ nextSpec=START_SPECIES.length;
+ for(const k in specBorn)delete specBorn[k];
+ for(const k in specNames)delete specNames[k];
+ for(const k in specStats)delete specStats[k];
+ for(const k in specTree)delete specTree[k];
+ specLog.length=0;
+ extEvents.length=0;
+ extLog.length=0;
+ readyBySpecP={};readyBySpecR={};
+ specEvents=[];
+ burrows.length=0;
+ highlighted.clear();
+ usedNames.clear();
+ worldSettings.foodRate=+$('foodRate').value;
+ worldSettings.mutRate=+$('mutRate').value;
+ worldSettings.foodCal=+$('foodCal').value;
+ worldSettings.huntCh=+$('huntCh').value;
+ for(let i=0;i<START_SPECIES.length;i++){
+  const sp=START_SPECIES[i];
+  if(!$('sp'+i+'Has').checked)continue;
+  const n=+$('sp'+i+'Num').value||0;
+  if(!n)continue;
+  specNames[i]=uniqueName($('sp'+i+'Name').value);
+  specBorn[i]=tick;
+  const created=[];
+  for(let k=0;k<n;k++){
+   const o=newCreature(sp.shape,undefined,undefined,genFrom(sp.rolled),1);
+   o.spec=i;
+   (o.kind==='r'?preds:prey).push(o);
+   created.push(o);
+  }
+  // начало ветки древа: средние гены основателей
+  specTree[i]={parent:null,bornTick:tick,g0:avgGenes(created),shape:sp.shape,gEnd:null,diedTick:null};
+  statRec('s'+i).initCount=n;
+ }
+ for(let i=0;i<200;i++)spawnFood();
+}
+
+function showStart(){
+ for(let i=0;i<START_SPECIES.length;i++){
+  $('sp'+i+'Name').value=randName();
+  START_SPECIES[i].rolled=rollRanges(START_SPECIES[i].ranges);
+  renderPreview(i);
+ }
+ carIdx=0;applyCarousel();
+ $('startModal').style.display='flex';
+}
+$('btnStart').onclick=()=>{
+ reset();
+ started=true;paused=false;
+ $('btnPause').textContent='Пауза';
+ $('startModal').style.display='none';
+};
+$('btnRestart').onclick=()=>{
+ paused=true;started=false;
+ $('btnPause').textContent='Продолжить';
+ $('statsModal').style.display='none';
+ $('treeModal').style.display='none';
+ showStart();
+};
+$('btnPause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Продолжить':'Пауза';};
+$('btnStats').onclick=()=>{
+ const m=$('statsModal');
+ const open=m.style.display==='flex';
+ m.style.display=open?'none':'flex';
+ if(!open){renderStatsModal();lastModalTick=tick;}
+};
+$('btnTree').onclick=()=>{
+ const m=$('treeModal');
+ const open=m.style.display==='flex';
+ m.style.display=open?'none':'flex';
+ if(!open)openTree();
+};
+$('simSpeed').oninput=e=>{$('simSpeedVal').textContent=(+e.target.value)+'x';};
+$('btnJson').onclick=()=>exportJSON();
+$('btnHelp').onclick=()=>$('helpModal').style.display='flex';
+$('btnHelpClose').onclick=()=>$('helpModal').style.display='none';
+
+// --- определение устройства: тач-экран или узкое окно → мобильная раскладка ---
+function applyDeviceMode(){
+ const coarse=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
+ const narrow=window.innerWidth<=MOBILE_MAX;
+ document.body.classList.toggle('mobile',!!(coarse||narrow));
+}
+window.addEventListener('resize',applyDeviceMode);
+applyDeviceMode();
+
+buildCarousel();
+showStart();loop();
+</script>
+</body>
+</html>
