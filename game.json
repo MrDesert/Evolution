@@ -9,7 +9,11 @@
     "video": "",
     "gallery": [],
     "promo": {
-        "banners": [],
+        "banners": [
+            "PROMO/BANNERS/volutionADBanner1.jpeg",
+            "PROMO/BANNERS/volutionADBanner2.jpeg",
+            "PROMO/BANNERS/volutionADBanner3.jpeg"
+        ],
         "videos": []
     }
 }
