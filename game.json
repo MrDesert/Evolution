@@ -1,0 +1,15 @@
+{
+    "id": "Evolution",
+    "title": "Эволюция",
+    "author": "MrDesert",
+    "logo": "IMG/EvolutionLogo.jpg",
+    "shortDesc": "Эволюция! Создай свои виды!...",
+    "fullDesc": "Вы можете наблюдать за появлением новых видов их вымиранием и эволюцией!",
+    "cover": "IMG/EvolutionCover.jpg",
+    "video": "",
+    "gallery": [],
+    "promo": {
+        "banners": [],
+        "videos": []
+    }
+}
