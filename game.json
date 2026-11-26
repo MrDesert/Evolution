@@ -11,7 +11,9 @@
     "promo": {
         "banners": [
             "PROMO/BANNERS/EvolutionADBanner1.jpeg",
+            "PROMO/BANNERS/EvolutionADBanner1.gif",
             "PROMO/BANNERS/EvolutionADBanner2.jpeg",
+            "PROMO/BANNERS/EvolutionADBanner2.gif",
             "PROMO/BANNERS/EvolutionADBanner3.jpeg"
         ],
         "videos": []
